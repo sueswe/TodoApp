@@ -1,0 +1,144 @@
+#!perl
+
+use strict;
+use Sqlite;
+use Encode qw(encode decode);
+use Term::ANSIColor;
+
+my @commandString;
+my @result;
+my $dataString;
+my $db;
+my $me = $0;
+$me = substr($me,0,rindex($me,'/'));
+$| = 1;
+
+$db = connectDB("${me}/todo_db.sqlite");
+
+system('clear');
+listTodos();
+
+print "> ";
+
+while (<>) {  
+    my $input = $_;
+    chomp $input;
+    system('clear');
+
+    if ($input eq "" || lc($input) eq "exit" ) {
+        exit 0;
+    }
+    
+    if (lc($input) =~ /del/) {
+        @commandString = split(" ",$input);
+        if ($commandString[1] ne "" && $commandString[1] =~ /\d/) {
+            my $deleteEntry_sql = "delete from entries where rowid = $commandString[1]";
+            executeSql($db,$deleteEntry_sql);
+            $dataString = "[data deleted]\n";
+        } else {    
+            exit 0;
+        }
+    } elsif (lc($input) =~ /stat/) {
+        @commandString = split(" ",$input);
+        if ($commandString[1] ne "" && $commandString[1] =~ /\d/ && $commandString[2] ne "" ) {
+            my $row=$commandString[1];
+            shift(@commandString);
+            shift(@commandString);
+            my $text = join (" " , @commandString);
+            my $updateStatus_sql = "update entries set status = '$text' where rowid = '$row' ";
+            $updateStatus_sql = encode('utf8',$updateStatus_sql);
+            executeSql($db,$updateStatus_sql);
+            $dataString =  "[data updated]\n";
+        } else {
+            exit 0;
+        }
+    } elsif (lc($input) =~ /edit/) {
+        @commandString = split(" ",$input);
+        if ($commandString[1] ne "" && $commandString[1] =~ /\d/ && $commandString[2] ne "" ) {
+            my $row=$commandString[1];
+            shift(@commandString);
+            shift(@commandString);
+            my $text = join (" " , @commandString);
+            my $updateEntry_sql = "update entries set todo = '$text' where rowid = '$row' ";
+            $updateEntry_sql = encode('utf8',$updateEntry_sql);
+            executeSql($db,$updateEntry_sql);
+            $dataString =  "[data updated]\n";
+        } else {
+            exit 0;
+        }
+    } elsif (lc($input) =~ /help/ || $input =~ /\?/) {
+        print color('yellow');
+        print "#" x 60 . "\n";
+        print "help:\n\n";
+        print "del [nn]             deletes an entry\n";
+        print "stat [nn] [text]     change status text\n";
+        print "edit [nn] [text]     change entry text\n";
+        print "[text]               creates a new entry\n";
+        print "exit                 quit the app\n";
+        print "#" x 60 . "\n\n";
+        print color('reset');
+    } elsif (lc($input) =~ /exit/) {
+        exit 0;
+    } else {
+        my $insertEntry_sql = "insert into entries (todo,status) values ('$input','open');";
+        $insertEntry_sql = encode('utf8',$insertEntry_sql);
+        @result = executeSql($db,$insertEntry_sql);
+        $dataString =  "[data saved]\n\n";
+    } 
+    
+    $db->do('VACUUM;');
+    
+    listTodos();
+    print $dataString;
+    
+    print ">" ;
+}
+
+
+sub listTodos {
+    #system('clear');
+    my $output;
+    print color('bold red');
+    print "-" x 60 . "\n";
+    print " My ToDo's\n";
+    print "-" x 60 . "\n";
+    print color('reset');
+    
+    my $listEntries_sql = "select * from entries";
+    
+    #$db->begin_work;
+    
+    @result = executeSql($db,$listEntries_sql);
+    my $i = 0;
+    if (scalar(@result) > 0) { 
+        for my $row (@result) {
+            if ($i > 0) {
+               # $output = "$i.) @$row[0] (@$row[1])\n";
+                print color('bold blue');
+                print "$i.) ";
+                print color('reset');
+                print  "@$row[0] (@$row[1])\n";
+               # print $output;
+           }
+            $i++;
+        }
+
+    } else {
+        print "[no data]\n";
+    }
+    print "=" x 60 . "\n";
+    print "Type in ";
+    print color('bold green');
+    print "help";
+    print color('reset');
+    print " or " ;
+    print color('bold green');
+    print "?";
+    print color('reset');
+    print " for help\n";
+    
+    print "=" x 60 . "\n";
+    #$db->do('commit;');
+}
+
+__END__
