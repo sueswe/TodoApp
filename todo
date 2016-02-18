@@ -10,10 +10,13 @@ my @result;
 my $dataString;
 my $db;
 my $me = $0;
+#print "debug: me = $me \n";
 $me = substr($me,0,rindex($me,'/'));
 $| = 1;
+#print "debug: me = $me \n";
+#exit(2);
 
-$db = connectDB("${me}/todo_db.sqlite");
+$db = connectDB("todo_db.sqlite");
 
 system('clear');
 listTodos();
